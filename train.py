@@ -57,7 +57,6 @@ class ClipCocoDataset(Dataset):
         sys.stdout.flush()
         self.prefixes = all_data["clip_embedding"]
         captions_raw = all_data["captions"]
-        self.image_ids = [caption["image_id"] for caption in captions_raw]
         self.captions = [caption['caption'] for caption in captions_raw]
         if os.path.isfile(f"{data_path[:-4]}_tokens.pkl"):
             with open(f"{data_path[:-4]}_tokens.pkl", 'rb') as f:
