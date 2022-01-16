@@ -22,7 +22,7 @@ def main(clip_model_type: str, device: str, webdataset_dir: str, output_filename
     
     clip_model, preprocess = clip.load(clip_model_type, device=device, jit=False, download_root='/mnt/theocoombes/huggingface-cache/clip')
     
-    tars = list(Path(webdataset_dir).glob("*.tar"))
+    tars = list(Path(webdataset_dir).glob("*.tar"))[:32]
     
     i = 0
     all_embeddings = []
