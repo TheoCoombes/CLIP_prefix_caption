@@ -57,7 +57,7 @@ def main(clip_model_type: str, device: str, webdataset_dir: str, output_filename
     for image, jsn in tqdm(dataloader, desc="processing embeddings"):
         d = {}
 
-        image = image.unsqueeze(0).to(device)
+        image = image.to(device)
 
         with torch.no_grad():
             prefix = clip_model.encode_image(image).cpu()
