@@ -14,7 +14,7 @@ def imagetransform(b):
     return Image.open(io.BytesIO(b))
 
 def filter_dataset(item):
-      if 'txt' not in item:
+      if 'json' not in item:
           return False
       if 'jpg' not in item:
           return False
