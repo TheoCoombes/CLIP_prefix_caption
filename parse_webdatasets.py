@@ -30,7 +30,7 @@ def main(clip_model_type: str, device: str, webdataset_dir: str, output_filename
     for tar in tars:
         dataset = wds.WebDataset(str(tar.resolve()))
         
-        for sample in tqdm(dataset, desc="tar {tar_n} / {len(tars)}"):
+        for sample in tqdm(dataset, desc=f"tar {tar_n} / {len(tars)}"):
             d = {}
 
             image = imagetransform(sample["jpg"])
