@@ -24,12 +24,13 @@ def main(clip_model_type: str, device: str, webdataset_dir: str, output_filename
     tars = list(Path(webdataset_dir).glob("*.tar"))[:32]
     
     i = 0
+    tar_n = 1
     all_embeddings = []
     all_captions = []
-    for tar in tqdm(tars, desc="generating embeddings from tars"):
+    for tar in tars:
         dataset = wds.WebDataset(str(tar.resolve()))
         
-        for sample in dataset:
+        for sample in tqdm(dataset, desc="tar {tar_n} / {len(tars)}"):
             d = {}
 
             image = imagetransform(sample["jpg"])
@@ -53,6 +54,8 @@ def main(clip_model_type: str, device: str, webdataset_dir: str, output_filename
                     pickle.dump({"clip_embedding": torch.cat(all_embeddings, dim=0), "captions": all_captions}, f)
             
             i += 1
+        
+        tar_n += 1
 
     with open(out_path, 'wb') as f:
         pickle.dump({"clip_embedding": torch.cat(all_embeddings, dim=0), "captions": all_captions}, f)
