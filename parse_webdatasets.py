@@ -37,8 +37,6 @@ def main(clip_model_type: str, device: str, webdataset_dir: str, output_filename
 
             with torch.no_grad():
                 prefix = clip_model.encode_image(image).cpu()
-
-            print(sample.get("caption"), sample.get("cap"))
             
             jsn = json.loads(sample["json"].decode())
             
