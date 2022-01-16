@@ -29,6 +29,8 @@ def main(clip_model_type: str, device: str, webdataset_dir: str, output_filename
     all_captions = []
     for tar in tqdm(tars, desc="generating embeddings from tars"):
         dataset = wds.WebDataset(tar)
+        print(dataset)
+        raise dataset
         
         for sample in dataset:
         
