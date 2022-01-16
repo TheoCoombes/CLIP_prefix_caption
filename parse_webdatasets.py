@@ -40,7 +40,7 @@ def main(clip_model_type: str, device: str, webdataset_dir: str, output_filename
 
             print(sample.get("caption"), sample.get("cap"))
             
-            captions = [sample["caption"]]
+            captions = [sample["json"]["caption"]]
 
             d["clip_embedding"] = i
             d["captions"] = captions
