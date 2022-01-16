@@ -13,7 +13,15 @@ import io
 def imagetransform(b):
     return Image.open(io.BytesIO(b))
 
-def main(clip_model_type: str, device: str, webdataset_dir: str, output_filename: str):
+def filter_dataset(item):
+      if 'txt' not in item:
+          return False
+      if 'jpg' not in item:
+          return False
+      return True
+
+
+def main(clip_model_type: str, device: str, webdataset_dir: str, output_filename: str, num_workers: int, batch_size: int):
     device = torch.device(device)
     clip_model_name = clip_model_type.replace('/', '_')
     
@@ -21,41 +29,34 @@ def main(clip_model_type: str, device: str, webdataset_dir: str, output_filename
     
     clip_model, preprocess = clip.load(clip_model_type, device=device, jit=False, download_root='/mnt/theocoombes/huggingface-cache/clip')
     
-    tars = list(Path(webdataset_dir).glob("*.tar"))[:32]
-    
     i = 0
-    tar_n = 1
     all_embeddings = []
     all_captions = []
-    for tar in tars:
-        dataset = wds.WebDataset(str(tar.resolve()))
-        
-        for sample in tqdm(dataset, desc=f"tar {tar_n} / {len(tars)}"):
-            d = {}
 
-            image = imagetransform(sample["jpg"])
-            image = preprocess(image).unsqueeze(0).to(device)
+    dataset = wds.WebDataset(webdataset_dir).select(filter_dataset).decode('rgb').to_tuple('jpg', 'json')
+    dl = wds.WebLoader(ds, shuffle=False, num_workers=num_workers, batch_size=batch_size, prefetch_factor=4*batch_size)
 
-            with torch.no_grad():
-                prefix = clip_model.encode_image(image).cpu()
-            
-            jsn = json.loads(sample["json"].decode())
-            
-            captions = [jsn["caption"]]
+    for image, jsn in tqdm(dl, desc="processing embeddings"):
+        d = {}
 
-            d["clip_embedding"] = i
-            d["captions"] = captions
+        image = preprocess(image).unsqueeze(0).to(device)
 
-            all_embeddings.append(prefix)
-            all_captions.append(d)
+        with torch.no_grad():
+            prefix = clip_model.encode_image(image).cpu()
 
-            if (i + 1) % 10000 == 0:
-                with open(out_path, 'wb') as f:
-                    pickle.dump({"clip_embedding": torch.cat(all_embeddings, dim=0), "captions": all_captions}, f)
-            
-            i += 1
-        
-        tar_n += 1
+        captions = [jsn["caption"]]
+
+        d["clip_embedding"] = i
+        d["captions"] = captions
+
+        all_embeddings.append(prefix)
+        all_captions.append(d)
+
+        if (i + 1) % 10000 == 0:
+            with open(out_path, 'wb') as f:
+                pickle.dump({"clip_embedding": torch.cat(all_embeddings, dim=0), "captions": all_captions}, f)
+
+        i += 1
 
     with open(out_path, 'wb') as f:
         pickle.dump({"clip_embedding": torch.cat(all_embeddings, dim=0), "captions": all_captions}, f)
@@ -68,8 +69,10 @@ def main(clip_model_type: str, device: str, webdataset_dir: str, output_filename
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--clip_model_type', default="ViT-B/32", choices=('RN50', 'RN101', 'RN50x4', 'ViT-B/32'))
+    parser.add_argument('--batch-size', type=int, default=200)
+    parser.add_argument('--worker-num', type=int, default=8)
     parser.add_argument('--device', default="cuda:0")
     parser.add_argument('--webdataset-dir')
     parser.add_argument('--output-pkl-filename', default="embeddings.pkl")
     args = parser.parse_args()
-    exit(main(args.clip_model_type, args.device, args.webdataset_dir, args.output_pkl_filename))
+    exit(main(args.clip_model_type, args.device, args.webdataset_dir, args.output_pkl_filename, args.worker_num, args.batch_size))
