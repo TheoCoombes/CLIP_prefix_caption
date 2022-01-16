@@ -38,6 +38,9 @@ def main(clip_model_type: str, device: str, webdataset_dir: str, output_filename
 
     for image, jsn in tqdm(dataloader, desc="processing embeddings"):
         d = {}
+        
+        print(image, type(image))
+        print(jsn, type(jsn))
 
         image = preprocess(image).unsqueeze(0).to(device)
 
