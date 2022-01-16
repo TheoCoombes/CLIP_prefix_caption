@@ -6,22 +6,37 @@ import json
 import os
 from tqdm import tqdm
 import webdataset as wds
-from pathlib import Path
+from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize
 import argparse
 import io
 
-def imagetransform(b):
-    return Image.open(io.BytesIO(b))
+try:
+    from torchvision.transforms import InterpolationMode
+    BICUBIC = InterpolationMode.BICUBIC
+except ImportError:
+    BICUBIC = Image.BICUBIC
 
-def jsontransform(b):
-    return json.loads(b.decode())
+def _convert_image_to_rgb(image):
+    return image.convert("RGB")
+
+def preprocess(n_px):
+    return Compose([
+        Resize(n_px, interpolation=BICUBIC),
+        CenterCrop(n_px),
+        _convert_image_to_rgb,
+        ToTensor(),
+        Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
+    ])
+
+def identity(x):
+    return x
 
 def filter_dataset(item):
-      if 'json' not in item:
-          return False
-      if 'jpg' not in item:
-          return False
-      return True
+    if 'json' not in item:
+        return False
+    if 'jpg' not in item:
+        return False
+    return True
 
 
 def main(clip_model_type: str, device: str, webdataset_dir: str, output_filename: str, num_workers: int, batch_size: int):
@@ -36,18 +51,13 @@ def main(clip_model_type: str, device: str, webdataset_dir: str, output_filename
     all_embeddings = []
     all_captions = []
 
-    dataset = wds.WebDataset(webdataset_dir).select(filter_dataset).map_json(jpg=imagetransform, json=jsontransform).to_tuple('jpg', 'json')
+    dataset = wds.WebDataset(webdataset_dir).select(filter_dataset).to_tuple('jpg', 'json').map_tuple(preprocess, identity)
     dataloader = wds.WebLoader(dataset, shuffle=False, num_workers=num_workers, batch_size=batch_size, prefetch_factor=4*batch_size)
 
     for image, jsn in tqdm(dataloader, desc="processing embeddings"):
         d = {}
-        
-        print(sample)
-        
-        print(image, type(image))
-        print(jsn, type(jsn))
 
-        image = preprocess(image).unsqueeze(0).to(device)
+        image = image.unsqueeze(0).to(device)
 
         with torch.no_grad():
             prefix = clip_model.encode_image(image).cpu()
