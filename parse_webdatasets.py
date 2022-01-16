@@ -33,6 +33,7 @@ def main(clip_model_type: str, device: str, webdataset_dir: str, output_filename
         for sample in dataset:
             d = {}
             
+            print(sample, dir(sample))
             print(sample["img"], type(sample["img"]))
             print(sample["cap"], type(sample["cap"]))
 
