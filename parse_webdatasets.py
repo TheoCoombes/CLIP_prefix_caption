@@ -1,5 +1,4 @@
 import torch
-import skimage.io as io
 import clip
 from PIL import Image
 import pickle
@@ -9,10 +8,10 @@ from tqdm import tqdm
 import webdataset as wds
 from pathlib import Path
 import argparse
+import io
 
 def imagetransform(b):
-    return Image.fromarray(io.imread(filename))
-
+    return Image.open(io.BytesIO(b))
 
 def main(clip_model_type: str, device: str, webdataset_dir: str, output_filename: str):
     device = torch.device(device)
@@ -32,18 +31,14 @@ def main(clip_model_type: str, device: str, webdataset_dir: str, output_filename
         
         for sample in dataset:
             d = {}
-            
-            print(sample, dir(sample))
-            print(sample["img"], type(sample["img"]))
-            print(sample["cap"], type(sample["cap"]))
 
-            image = imagetransform(sample["img"])
+            image = imagetransform(sample["jpg"])
             image = preprocess(image).unsqueeze(0).to(device)
 
             with torch.no_grad():
                 prefix = clip_model.encode_image(image).cpu()
 
-            captions = [sample["cap"]]
+            captions = [sample["caption"]]
 
             d["clip_embedding"] = i
             d["captions"] = captions
