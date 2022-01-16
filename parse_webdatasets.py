@@ -51,7 +51,7 @@ def main(clip_model_type: str, device: str, webdataset_dir: str, output_filename
     all_embeddings = []
     all_captions = []
 
-    dataset = wds.WebDataset(webdataset_dir).select(filter_dataset).to_tuple('jpg', 'json').map_tuple(preprocess, identity)
+    dataset = wds.WebDataset(webdataset_dir).select(filter_dataset).decode('pil').to_tuple('jpg', 'json').map_tuple(preprocess, identity)
     dataloader = wds.WebLoader(dataset, shuffle=False, num_workers=num_workers, batch_size=batch_size, prefetch_factor=4*batch_size)
 
     for image, jsn in tqdm(dataloader, desc="processing embeddings"):
