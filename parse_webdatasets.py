@@ -13,6 +13,9 @@ import io
 def imagetransform(b):
     return Image.open(io.BytesIO(b))
 
+def jsontransform(b):
+    return json.loads(b.decode())
+
 def filter_dataset(item):
       if 'json' not in item:
           return False
@@ -33,10 +36,10 @@ def main(clip_model_type: str, device: str, webdataset_dir: str, output_filename
     all_embeddings = []
     all_captions = []
 
-    dataset = wds.WebDataset(webdataset_dir).select(filter_dataset).decode('pil')#.to_tuple('jpg', 'json')
+    dataset = wds.WebDataset(webdataset_dir).select(filter_dataset).map_json(jpg=imagetransform, json=jsontransform).to_tuple('jpg', 'json')
     dataloader = wds.WebLoader(dataset, shuffle=False, num_workers=num_workers, batch_size=batch_size, prefetch_factor=4*batch_size)
 
-    for sample in tqdm(dataloader, desc="processing embeddings"): #image, jsn
+    for image, jsn in tqdm(dataloader, desc="processing embeddings"):
         d = {}
         
         print(sample)
