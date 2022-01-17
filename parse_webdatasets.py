@@ -26,7 +26,7 @@ def preprocess(n_px):
         _convert_image_to_rgb,
         ToTensor(),
         Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
-    ]).unsqueeze(0).to(device)
+    ])
 
 def identity(x):
     return x
@@ -39,9 +39,8 @@ def filter_dataset(item):
     return True
 
 
-def main(clip_model_type: str, torch_device: str, webdataset_dir: str, output_filename: str, num_workers: int, batch_size: int):
-    global device
-    device = torch.device(torch_device)
+def main(clip_model_type: str, device: str, webdataset_dir: str, output_filename: str, num_workers: int, batch_size: int):
+    device = torch.device(device)
     
     clip_model_name = clip_model_type.replace('/', '_')
     
@@ -60,7 +59,7 @@ def main(clip_model_type: str, torch_device: str, webdataset_dir: str, output_fi
         for i2 in range(len(images)):
             d = {}
 
-            image = images[i2]
+            image = images[i2].unsqueeze(0).to(device)
 
             with torch.no_grad():
                 prefix = clip_model.encode_image(image).cpu()
