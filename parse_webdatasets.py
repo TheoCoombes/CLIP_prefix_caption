@@ -39,9 +39,10 @@ def filter_dataset(item):
     return True
 
 
-def main(clip_model_type: str, device: str, webdataset_dir: str, output_filename: str, num_workers: int, batch_size: int):
+def main(clip_model_type: str, torch_device: str, webdataset_dir: str, output_filename: str, num_workers: int, batch_size: int):
     global device
-    device = torch.device(device)
+    device = torch.device(torch_device)
+    
     clip_model_name = clip_model_type.replace('/', '_')
     
     out_path = output_filename
