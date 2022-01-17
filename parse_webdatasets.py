@@ -54,8 +54,10 @@ def main(clip_model_type: str, device: str, webdataset_dir: str, output_filename
 
     dataset = wds.WebDataset(webdataset_dir).select(filter_dataset).decode('pil').to_tuple('jpg', 'json').map_tuple(preprocess, identity)
     dataloader = wds.WebLoader(dataset, shuffle=False, num_workers=num_workers, batch_size=batch_size, prefetch_factor=4*batch_size)
+    
+    progress = tqdm(desc="processing embeddings")
 
-    for images, jsn in tqdm(dataloader, desc="processing embeddings", unit="batch"):
+    for images, jsn in dataloader:
         for i2 in range(len(images)):
             d = {}
 
@@ -75,8 +77,10 @@ def main(clip_model_type: str, device: str, webdataset_dir: str, output_filename
             if (i + 1) % 10000 == 0:
                 with open(out_path, 'wb') as f:
                     pickle.dump({"clip_embedding": torch.cat(all_embeddings, dim=0), "captions": all_captions}, f)
-
+            
             i += 1
+        
+        progress.update(batch_size)
 
     with open(out_path, 'wb') as f:
         pickle.dump({"clip_embedding": torch.cat(all_embeddings, dim=0), "captions": all_captions}, f)
