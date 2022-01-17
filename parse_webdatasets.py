@@ -55,6 +55,9 @@ def main(clip_model_type: str, device: str, webdataset_dir: str, output_filename
     dataloader = wds.WebLoader(dataset, shuffle=False, num_workers=num_workers, batch_size=batch_size, prefetch_factor=4*batch_size)
 
     for image, jsn in tqdm(dataloader, desc="processing embeddings"):
+        print(image)
+        print(jsn)
+        
         d = {}
 
         image = image.to(device)
