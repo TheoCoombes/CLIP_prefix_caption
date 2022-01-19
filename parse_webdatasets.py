@@ -7,6 +7,7 @@ import json
 import fsspec
 from io import BytesIO
 from pathlib import Path
+import torch
 import tqdm
 import io
 
