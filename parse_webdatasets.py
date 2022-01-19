@@ -98,7 +98,8 @@ def get_image_dataset():
             text_tokens = torch.tensor(self.tokenizer.encode(caption), dtype=torch.int64)
             text_tokens, mask = preprocess_text_tokens(text_tokens, self.max_token_length, self.prefix_length)
             
-            output["text_tokens"] = np.concatenate((text_tokens.detach().numpy(), mask.detach().numpy()))
+            output["text_tokens"] = text_tokens.detach().numpy()
+            output["text_mask"] = mask.detach().numpy()
             output["text"] = caption
 
             return output
@@ -154,7 +155,8 @@ def create_webdataset(
             text_tokens = torch.tensor(tokenizer.encode(caption), dtype=torch.int64)
             text_tokens, mask = preprocess_text_tokens(text_tokens, max_token_length, prefix_length)
             
-            output["text_tokens"] = np.concatenate((text_tokens.detach().numpy(), mask.detach().numpy()))
+            output["text_tokens"] = text_tokens.detach().numpy()
+            output["text_mask"] = mask.detach().numpy()
             output["text"] = caption
         else:
             metadata_file = item["json"]
@@ -164,7 +166,8 @@ def create_webdataset(
             text_tokens = torch.tensor(tokenizer.encode(caption), dtype=torch.int64)
             text_tokens, mask = preprocess_text_tokens(text_tokens, max_token_length, prefix_length)
             
-            output["text_tokens"] = np.concatenate((text_tokens.detach().numpy(), mask.detach().numpy()))
+            output["text_tokens"] = text_tokens.detach().numpy()
+            output["text_mask"] = mask.detach().numpy()
             output["text"] = caption
         
         return output
@@ -181,6 +184,7 @@ class OutputSink:
         self.output_folder = output_folder
         self.img_emb_folder = output_folder + "/img_embeddings"
         self.text_token_folder = output_folder + "/text_tokens"
+        self.text_mask_folder = output_folder + "/text_masks"
         self.metadata_folder = output_folder + "/metadata"
 
         if not self.fs.exists(self.output_folder):
@@ -200,6 +204,9 @@ class OutputSink:
         if not self.fs.exists(self.text_token_folder):
             self.fs.mkdir(self.text_token_folder)
         
+        if not self.fs.exists(self.text_mask_folder):
+            self.fs.mkdir(self.text_mask_folder)
+        
         if not self.fs.exists(self.metadata_folder):
             self.fs.mkdir(self.metadata_folder)
 
@@ -212,12 +219,13 @@ class OutputSink:
         self.image_embeddings = []
         self.text_tokens = []
         self.image_names = []
+        self.text_masks = []
         self.captions = []
         self.metadata = []
         self.batch_count = 0
         self.batch_num += 1
 
-    def add(self, image_embs, text_tokens, image_filenames, captions):
+    def add(self, image_embs, text_tokens, text_masks, image_filenames, captions):
         """
         add to buffers the image embeddings, text embeddings, and meta
         """
@@ -226,6 +234,7 @@ class OutputSink:
         self.image_names.extend(image_filenames)
         self.captions.extend(captions)
         self.text_tokens.extend(text_tokens)
+        self.text_masks.extend(text_tokens)
 
         if self.batch_count > self.write_batch_size:
             self.flush()
@@ -252,11 +261,19 @@ class OutputSink:
         data_columns.append("image_path")
 
         text_token_mat = np.array(self.text_tokens)
-        output_path_text = self.text_token_folder + "/text_emb_" + str(self.batch_num)
+        output_path_text = self.text_token_folder + "/text_tokens_" + str(self.batch_num)
 
         with self.fs.open(output_path_text + ".npy", "wb") as f:
             npb = BytesIO()
             np.save(npb, text_token_mat)
+            f.write(npb.getbuffer())
+        
+        text_mask_mat = np.array(self.self.text_masks)
+        output_path_text = self.text_mask_folder + "/text_masks_" + str(self.batch_num)
+
+        with self.fs.open(output_path_text + ".npy", "wb") as f:
+            npb = BytesIO()
+            np.save(npb, text_mask_mat)
             f.write(npb.getbuffer())
 
         data_lists.append(self.captions)
@@ -345,9 +362,10 @@ def clip_inference(
             image_filename = item["image_filename"]
 
             text_tokens = item["text_tokens"]
+            text_mask = item["text_mask"]
             text = item["text"]
 
-            output_sink.add(image_embs, text_tokens, image_filename, text)
+            output_sink.add(image_embs, text_tokens, text_mask, image_filename, text)
 
         bar.update(batch_size)
         c += batch_size
