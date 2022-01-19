@@ -95,7 +95,7 @@ def get_image_dataset():
             caption = text_file.read_text()
             
             text_tokens = torch.tensor(self.tokenizer.encode(caption), dtype=torch.int64)
-            text_tokens, mask = preprocess_text_tokens(text_tokens)
+            text_tokens, mask = preprocess_text_tokens(text_tokens, self.max_token_length)
             
             output["text_tokens"] = np.array([text_tokens.numpy(), mask.numpy()])
             output["text"] = caption
@@ -113,7 +113,7 @@ def create_webdataset(
     caption_in_metadata=False,
     cache_path=None,
     tokenizer_model="gpt2",
-    max_token_length=77,
+    max_token_length=100,
 ):
     """Create a WebDataset reader, it can read a webdataset of image, text and json"""
     import clip  # pylint: disable=import-outside-toplevel
@@ -150,7 +150,7 @@ def create_webdataset(
             caption = text.decode("utf-8")
             
             text_tokens = torch.tensor(tokenizer.encode(caption), dtype=torch.int64)
-            text_tokens, mask = preprocess_text_tokens(text_tokens)
+            text_tokens, mask = preprocess_text_tokens(text_tokens, max_token_length)
             
             output["text_tokens"] = np.array([text_tokens.numpy(), mask.numpy()])
             output["text"] = caption
@@ -160,7 +160,7 @@ def create_webdataset(
             caption = json.loads(metadata)[caption_key]
             
             text_tokens = torch.tensor(tokenizer.encode(caption), dtype=torch.int64)
-            text_tokens, mask = preprocess_text_tokens(text_tokens)
+            text_tokens, mask = preprocess_text_tokens(text_tokens, max_token_length)
             
             output["text_tokens"] = np.array([text_tokens.numpy(), mask.numpy()])
             output["text"] = caption
