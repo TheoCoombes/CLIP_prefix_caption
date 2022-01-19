@@ -322,8 +322,7 @@ def clip_inference(
             image_filename = item["image_filename"]
 
             text_tokens = item["text_tokens"]
-            print(type(text_tokens))
-            print(len(text_tokens))
+            print(text_tokens)
             text = item["text"]
 
             output_sink.add(image_embs, text_tokens, image_filename, text)
