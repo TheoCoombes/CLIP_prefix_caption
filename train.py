@@ -1,16 +1,18 @@
 import torch
 import torch.nn as nn
 from torch.nn import functional as nnf
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import IterableDataset, DataLoader
 from enum import Enum
 from transformers import GPT2Tokenizer, GPT2LMHeadModel, AdamW, get_linear_schedule_with_warmup
+from pathlib import Path
 from tqdm import tqdm
+import numpy as np
 import os
 import pickle
 import sys
 import argparse
 import json
-from typing import Tuple, Optional, Union
+from typing import Tuple, Optional, Union, List
 
 
 class MappingType(Enum):
@@ -18,63 +20,64 @@ class MappingType(Enum):
     Transformer = 'transformer'
 
 
-class ClipCocoDataset(Dataset):
-
-    def __len__(self) -> int:
-        return len(self.captions_tokens)
-
-    def pad_tokens(self, item: int):
-        tokens = self.captions_tokens[item]
-        padding = self.max_seq_len - tokens.shape[0]
-        if padding > 0:
-            tokens = torch.cat((tokens, torch.zeros(padding, dtype=torch.int64) - 1))
-            self.captions_tokens[item] = tokens
-        elif padding < 0:
-            tokens = tokens[:self.max_seq_len]
-            self.captions_tokens[item] = tokens
-        mask = tokens.ge(0)  # mask is zero where we out of sequence
-        tokens[~mask] = 0
-        mask = mask.float()
-        mask = torch.cat((torch.ones(self.prefix_length), mask), dim=0)  # adding prefix mask
-        return tokens, mask
-
-    def __getitem__(self, item: int) -> Tuple[torch.Tensor, ...]:
-        tokens, mask = self.pad_tokens(item)
-        prefix = self.prefixes[self.caption2embedding[item]]
-        if self.normalize_prefix:
-            prefix = prefix.float()
-            prefix = prefix / prefix.norm(2, -1)
-        return tokens, mask, prefix
-
-    def __init__(self, data_path: str,  prefix_length: int, gpt2_type: str = "gpt2",
-                 normalize_prefix=False):
-        self.tokenizer = GPT2Tokenizer.from_pretrained('gpt2-xl')
+class WebDatasetData(IterableDataset):
+    def __init__(self, data_path: str, normalize_prefix: bool = False):
+        super(WebDatasetData).__init__()
+        
         self.prefix_length = prefix_length
         self.normalize_prefix = normalize_prefix
-        with open(data_path, 'rb') as f:
-            all_data = pickle.load(f)
-        print("Data size is %0d" % len(all_data["clip_embedding"]))
-        sys.stdout.flush()
-        self.prefixes = all_data["clip_embedding"]
-        captions_raw = all_data["captions"]
-        self.captions = [caption['caption'] for caption in captions_raw]
-        if os.path.isfile(f"{data_path[:-4]}_tokens.pkl"):
-            with open(f"{data_path[:-4]}_tokens.pkl", 'rb') as f:
-                self.captions_tokens, self.caption2embedding, self.max_seq_len = pickle.load(f)
+        
+        path = Path(data_path)
+        self.images_path = path / "img_embeddings"
+        self.tokens_path = path / "text_tokens"
+        self.masks_path = path / "text_masks"
+        self.embedding_files = list(images_path.glob("*.npy"))
+        self.total_batches = len(self.embedding_files)
+        self.epoch = 0
+    
+    
+    def __iter__(self):
+        worker_info = torch.utils.data.get_worker_info()
+        
+        if worker_info is None:
+            worker_id = 0
+            num_workers = 1
         else:
-            self.captions_tokens = []
-            self.caption2embedding = []
-            max_seq_len = 0
-            for caption in captions_raw:
-                self.captions_tokens.append(torch.tensor(self.tokenizer.encode(caption['caption']), dtype=torch.int64))
-                self.caption2embedding.append(caption["clip_embedding"])
-                max_seq_len = max(max_seq_len, self.captions_tokens[-1].shape[0])
-            # self.max_seq_len = max_seq_len
-            with open(f"{data_path[:-4]}_tokens.pkl", 'wb') as f:
-                pickle.dump([self.captions_tokens, self.caption2embedding, max_seq_len], f)
-        all_len = torch.tensor([len(self.captions_tokens[i]) for i in range(len(self))]).float()
-        self.max_seq_len = min(int(all_len.mean() + all_len.std() * 10), int(all_len.max()))
+            worker_id = worker_info.id
+            num_workers = worker_info.num_workers
+        
+        batch_index = worker_id
+        while True:
+            while batch_index >= self.total_batches:
+                batch_index -= self.total_batches
 
+            batch = self._load_batch(self.embedding_files[batch_index])
+
+            for tokens, mask, prefix in batch:      
+                if self.normalize_prefix:
+                    prefix = prefix.float()
+                    prefix = prefix / prefix.norm(2, -1)
+
+                yield tokens, mask, prefix
+            
+            batch_index += worker_id
+    
+    
+    def _load_batch(self, image_file: Path) -> List[Tuple[torch.Tensor, ...]]:
+        file_id = image_file.name.split("_")[-1].split(".")[0]
+        
+        token_file = self.tokens_path / f"text_tokens_{file_id}.npy"
+        masks_file = self.tokens_path / f"text_tokens_{file_id}.npy"
+        
+        image_embeddings = [embedding for embedding in torch.from_numpy(np.load(image_file))]
+        caption_tokens = [tokens for tokens in torch.from_numpy(np.load(token_file))]
+        caption_masks = [mask for mask in torch.from_numpy(np.load(masks_file))]
+        
+        batch = list(zip(caption_tokens, caption_masks, image_embeddings))
+        
+        return batch
+    
+    
 
 class MLP(nn.Module):
 
@@ -287,7 +290,7 @@ def load_model(config_path: str, epoch_or_latest: Union[str, int] = '_latest'):
     return model, parser
 
 
-def train(dataset: ClipCocoDataset, model: ClipCaptionModel, args,
+def train(dataset: WebDatasetDatax, model: ClipCaptionModel, args,
           lr: float = 2e-5, warmup_steps: int = 5000, output_dir: str = ".", output_prefix: str = "", device: str = "cuda:0"):
 
     device = torch.device(device)
@@ -335,7 +338,7 @@ def train(dataset: ClipCocoDataset, model: ClipCaptionModel, args,
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data', default='./data/coco/oscar_split_train.pkl')
+    parser.add_argument('--data-dir', default='./train/')
     parser.add_argument('--out_dir', default='./checkpoints')
     parser.add_argument('--prefix', default='coco_prefix', help='prefix for saved filenames')
     parser.add_argument('--epochs', type=int, default=10)
@@ -351,7 +354,7 @@ def main():
     parser.add_argument('--device', default='cuda:0')
     args = parser.parse_args()
     prefix_length = args.prefix_length
-    dataset = ClipCocoDataset(args.data, prefix_length, normalize_prefix=args.normalize_prefix)
+    dataset = WebDatasetData(args.data, normalize_prefix=args.normalize_prefix)
     prefix_dim = 640 if args.is_rn else 512
     args.mapping_type = {'mlp': MappingType.MLP, 'transformer': MappingType.Transformer}[args.mapping_type]
     if args.only_prefix:
