@@ -267,7 +267,8 @@ def clip_inference(
     wds_caption_in_metadata=False,
     clip_model="ViT-B/32",
     text_tokenizer_model="gpt2",
-    max_token_length=100
+    max_token_length=100,
+    device="cuda:0"
 ):
     """clip inference goes from a image text dataset to clip embeddings"""
 
@@ -276,7 +277,6 @@ def clip_inference(
     from torch.utils.data.dataloader import default_collate  # pylint: disable=import-outside-toplevel
     import torch  # pylint: disable=import-outside-toplevel
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
     model, preprocess = clip.load(clip_model, device=device, jit=False)
     model_img = model.encode_image
 
