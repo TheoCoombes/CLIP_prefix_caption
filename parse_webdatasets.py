@@ -27,7 +27,7 @@ def get_image_dataset():
     class ImageDataset(Dataset):
         """ImageDataset is a pytorch Dataset exposing image and text tensors from a folder of image and text"""
 
-        def __init__(self, preprocess, folder, tokenizer_model="gpt2"):
+        def __init__(self, preprocess, folder, tokenizer_model="gpt2", max_token_length=100):
             super().__init__()
             import clip  # pylint: disable=import-outside-toplevel
             from transformers import AutoTokenizer  # pylint: disable=import-outside-toplevel
@@ -55,6 +55,7 @@ def get_image_dataset():
             
             self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_model)
             self.tokenizer.add_special_tokens({'pad_token': self.tokenizer.eos_token})
+            self.max_token_length = max_token_length
             
             self.text_files = {k: v for k, v in text_files.items() if k in keys}
 
@@ -80,7 +81,7 @@ def get_image_dataset():
 
             text_file = self.text_files[key]
             caption = text_file.read_text()
-            text_tokens = self.tokenizer(caption, padding='max_length', max_length=512, truncation=True)
+            text_tokens = self.tokenizer(caption, padding='max_length', max_length=self.max_token_length, truncation=True)
             output["text_tokens"] = text_tokens
             output["text"] = caption
 
@@ -97,7 +98,7 @@ def create_webdataset(
     caption_in_metadata=False,
     cache_path=None,
     tokenizer_model="gpt2",
-    caption_size=77
+    max_token_length=77,
 ):
     """Create a WebDataset reader, it can read a webdataset of image, text and json"""
     import clip  # pylint: disable=import-outside-toplevel
@@ -140,7 +141,7 @@ def create_webdataset(
             metadata = metadata_file.decode("utf-8")
 
             caption = json.loads(metadata)[caption_key]
-            text_tokens = tokenizer(caption, padding='max_length', max_length=512, truncation=True)
+            text_tokens = tokenizer(caption, padding='max_length', max_length=max_token_length, truncation=True)
             output["text_tokens"] = text_tokens
             output["text"] = caption
         
@@ -198,7 +199,7 @@ class OutputSink:
         """
         add to buffers the image embeddings, text embeddings, and meta
         """
-        self.batch_count += image_embs.shape[0] if self.enable_image else text_embs.shape[0]
+        self.batch_count += image_embs.shape[0]
         self.image_embeddings.append(image_embs)
         self.image_names.extend(image_filenames)
         self.captions.extend(captions)
@@ -266,6 +267,7 @@ def clip_inference(
     wds_caption_in_metadata=False,
     clip_model="ViT-B/32",
     text_tokenizer_model="gpt2",
+    max_token_length=100
 ):
     """clip inference goes from a image text dataset to clip embeddings"""
 
@@ -279,7 +281,7 @@ def clip_inference(
     model_img = model.encode_image
 
     if input_format == "files":
-        dataset = get_image_dataset()(preprocess, input_dataset, tokenizer_model=text_tokenizer_model)
+        dataset = get_image_dataset()(preprocess, input_dataset, tokenizer_model=text_tokenizer_model, max_token_length=max_token_length)
     elif input_format == "webdataset":
         dataset = create_webdataset(
             input_dataset,
@@ -288,7 +290,8 @@ def clip_inference(
             caption_key=wds_caption_key,
             caption_in_metadata=wds_caption_in_metadata,
             cache_path=cache_path,
-            tokenizer_model=text_tokenizer_model
+            tokenizer_model=text_tokenizer_model,
+            max_token_length=max_token_length
         )
     else:
         raise Exception(f"No such input format {input_format}")
