@@ -98,8 +98,8 @@ def get_image_dataset():
             text_tokens = torch.tensor(self.tokenizer.encode(caption), dtype=torch.int64)
             text_tokens, mask = preprocess_text_tokens(text_tokens, self.max_token_length, self.prefix_length)
             
-            output["text_tokens"] = text_tokens.detach().numpy()
-            output["text_mask"] = mask.detach().numpy()
+            output["text_tokens"] = text_tokens
+            output["text_mask"] = mask
             output["text"] = caption
 
             return output
@@ -155,8 +155,8 @@ def create_webdataset(
             text_tokens = torch.tensor(tokenizer.encode(caption), dtype=torch.int64)
             text_tokens, mask = preprocess_text_tokens(text_tokens, max_token_length, prefix_length)
             
-            output["text_tokens"] = text_tokens.detach().numpy()
-            output["text_mask"] = mask.detach().numpy()
+            output["text_tokens"] = text_tokens
+            output["text_mask"] = mask
             output["text"] = caption
         else:
             metadata_file = item["json"]
@@ -260,7 +260,7 @@ class OutputSink:
         data_lists.append(self.image_names)
         data_columns.append("image_path")
 
-        text_token_mat = np.array(self.text_tokens)
+        text_token_mat = torch.stack(self.text_tokens, dim=0).numpy()
         output_path_text = self.text_token_folder + "/text_tokens_" + str(self.batch_num)
 
         with self.fs.open(output_path_text + ".npy", "wb") as f:
@@ -268,7 +268,7 @@ class OutputSink:
             np.save(npb, text_token_mat)
             f.write(npb.getbuffer())
         
-        text_mask_mat = np.array(self.text_masks)
+        text_mask_mat = torch.stack(self.text_masks, dim=0).numpy()
         output_path_text = self.text_mask_folder + "/text_masks_" + str(self.batch_num)
 
         with self.fs.open(output_path_text + ".npy", "wb") as f:
