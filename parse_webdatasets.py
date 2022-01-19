@@ -234,7 +234,7 @@ class OutputSink:
         self.image_names.extend(image_filenames)
         self.captions.extend(captions)
         self.text_tokens.extend(text_tokens)
-        self.text_masks.extend(text_tokens)
+        self.text_masks.extend(text_masks)
 
         if self.batch_count > self.write_batch_size:
             self.flush()
