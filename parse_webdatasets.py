@@ -11,16 +11,16 @@ import torch
 import tqdm
 import io
 
-def preprocess_text_tokens(tokens: torch.Tensor, max_sequence_length: int):
+def preprocess_text_tokens(tokens: torch.Tensor, max_sequence_length: int, prefix_length: int):
     padding = max_sequence_length - tokens.shape[0]
     if padding > 0:
         tokens = torch.cat((tokens, torch.zeros(padding, dtype=torch.int64) - 1))
     elif padding < 0:
-        tokens = tokens[:self.max_seq_len]
+        tokens = tokens[:max_sequence_length]
     mask = tokens.ge(0)  # mask is zero where we out of sequence
     tokens[~mask] = 0
     mask = mask.float()
-    mask = torch.cat((torch.ones(self.prefix_length), mask), dim=0)  # adding prefix mask
+    mask = torch.cat((torch.ones(prefix_length), mask), dim=0)  # adding prefix mask
     return tokens, mask
 
 def normalized(a, axis=-1, order=2):
@@ -39,7 +39,7 @@ def get_image_dataset():
     class ImageDataset(Dataset):
         """ImageDataset is a pytorch Dataset exposing image and text tensors from a folder of image and text"""
 
-        def __init__(self, preprocess, folder, tokenizer_model="gpt2", max_token_length=100):
+        def __init__(self, preprocess, folder, tokenizer_model="gpt2", max_token_length=100, prefix_length=10):
             super().__init__()
             import clip  # pylint: disable=import-outside-toplevel
             from transformers import AutoTokenizer  # pylint: disable=import-outside-toplevel
@@ -66,8 +66,8 @@ def get_image_dataset():
             self.keys = list(keys)
             
             self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_model)
-            self.tokenizer.add_special_tokens({'pad_token': self.tokenizer.eos_token})
             self.max_token_length = max_token_length
+            self.prefix_length = prefix_length
             
             self.text_files = {k: v for k, v in text_files.items() if k in keys}
 
@@ -95,7 +95,7 @@ def get_image_dataset():
             caption = text_file.read_text()
             
             text_tokens = torch.tensor(self.tokenizer.encode(caption), dtype=torch.int64)
-            text_tokens, mask = preprocess_text_tokens(text_tokens, self.max_token_length)
+            text_tokens, mask = preprocess_text_tokens(text_tokens, self.max_token_length, self.prefix_length)
             
             output["text_tokens"] = np.array([text_tokens.numpy(), mask.numpy()])
             output["text"] = caption
@@ -114,6 +114,7 @@ def create_webdataset(
     cache_path=None,
     tokenizer_model="gpt2",
     max_token_length=100,
+    prefix_length=10
 ):
     """Create a WebDataset reader, it can read a webdataset of image, text and json"""
     import clip  # pylint: disable=import-outside-toplevel
@@ -150,7 +151,7 @@ def create_webdataset(
             caption = text.decode("utf-8")
             
             text_tokens = torch.tensor(tokenizer.encode(caption), dtype=torch.int64)
-            text_tokens, mask = preprocess_text_tokens(text_tokens, max_token_length)
+            text_tokens, mask = preprocess_text_tokens(text_tokens, max_token_length, prefix_length)
             
             output["text_tokens"] = np.array([text_tokens.numpy(), mask.numpy()])
             output["text"] = caption
@@ -160,7 +161,7 @@ def create_webdataset(
             caption = json.loads(metadata)[caption_key]
             
             text_tokens = torch.tensor(tokenizer.encode(caption), dtype=torch.int64)
-            text_tokens, mask = preprocess_text_tokens(text_tokens, max_token_length)
+            text_tokens, mask = preprocess_text_tokens(text_tokens, max_token_length, prefix_length)
             
             output["text_tokens"] = np.array([text_tokens.numpy(), mask.numpy()])
             output["text"] = caption
