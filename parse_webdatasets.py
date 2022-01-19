@@ -10,6 +10,17 @@ from pathlib import Path
 import tqdm
 import io
 
+def preprocess_text_tokens(tokens: torch.Tensor, max_sequence_length: int):
+    padding = max_sequence_length - tokens.shape[0]
+    if padding > 0:
+        tokens = torch.cat((tokens, torch.zeros(padding, dtype=torch.int64) - 1))
+    elif padding < 0:
+        tokens = tokens[:self.max_seq_len]
+    mask = tokens.ge(0)  # mask is zero where we out of sequence
+    tokens[~mask] = 0
+    mask = mask.float()
+    mask = torch.cat((torch.ones(self.prefix_length), mask), dim=0)  # adding prefix mask
+    return tokens, mask
 
 def normalized(a, axis=-1, order=2):
     import numpy as np  # pylint: disable=import-outside-toplevel
@@ -81,8 +92,11 @@ def get_image_dataset():
 
             text_file = self.text_files[key]
             caption = text_file.read_text()
-            text_tokens = self.tokenizer(caption, padding='max_length', max_length=self.max_token_length, truncation=True)
-            output["text_tokens"] = text_tokens
+            
+            text_tokens = torch.tensor(self.tokenizer.encode(caption), dtype=torch.int64)
+            text_tokens, mask = preprocess_text_tokens(text_tokens)
+            
+            output["text_tokens"] = np.array([text_tokens.numpy(), mask.numpy()])
             output["text"] = caption
 
             return output
@@ -133,16 +147,21 @@ def create_webdataset(
         if not caption_in_metadata:
             text = item[caption_key]
             caption = text.decode("utf-8")
-            tokenized_text = tokenizer(caption)
-            output["text_tokens"] = tokenized_text
+            
+            text_tokens = torch.tensor(tokenizer.encode(caption), dtype=torch.int64)
+            text_tokens, mask = preprocess_text_tokens(text_tokens)
+            
+            output["text_tokens"] = np.array([text_tokens.numpy(), mask.numpy()])
             output["text"] = caption
         else:
             metadata_file = item["json"]
             metadata = metadata_file.decode("utf-8")
-
             caption = json.loads(metadata)[caption_key]
-            text_tokens = tokenizer(caption, padding='max_length', max_length=max_token_length, truncation=True)
-            output["text_tokens"] = text_tokens
+            
+            text_tokens = torch.tensor(tokenizer.encode(caption), dtype=torch.int64)
+            text_tokens, mask = preprocess_text_tokens(text_tokens)
+            
+            output["text_tokens"] = np.array([text_tokens.numpy(), mask.numpy()])
             output["text"] = caption
         
         return output
