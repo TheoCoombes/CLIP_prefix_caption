@@ -98,7 +98,7 @@ def get_image_dataset():
             text_tokens = torch.tensor(self.tokenizer.encode(caption), dtype=torch.int64)
             text_tokens, mask = preprocess_text_tokens(text_tokens, self.max_token_length, self.prefix_length)
             
-            output["text_tokens"] = np.array([text_tokens.numpy(), mask.numpy()])
+            output["text_tokens"] = np.concatenate((text_tokens.numpy(), mask.numpy()))
             output["text"] = caption
 
             return output
@@ -293,6 +293,7 @@ def clip_inference(
     clip_model="ViT-B/32",
     text_tokenizer_model="gpt2",
     max_token_length=100,
+    prefix_length=10,
     device="cuda:0"
 ):
     """clip inference goes from a image text dataset to clip embeddings"""
@@ -306,7 +307,7 @@ def clip_inference(
     model_img = model.encode_image
 
     if input_format == "files":
-        dataset = get_image_dataset()(preprocess, input_dataset, tokenizer_model=text_tokenizer_model, max_token_length=max_token_length)
+        dataset = get_image_dataset()(preprocess, input_dataset, tokenizer_model=text_tokenizer_model, max_token_length=max_token_length, prefix_length=prefix_length)
     elif input_format == "webdataset":
         dataset = create_webdataset(
             input_dataset,
@@ -316,7 +317,8 @@ def clip_inference(
             caption_in_metadata=wds_caption_in_metadata,
             cache_path=cache_path,
             tokenizer_model=text_tokenizer_model,
-            max_token_length=max_token_length
+            max_token_length=max_token_length,
+            prefix_length=prefix_length
         )
     else:
         raise Exception(f"No such input format {input_format}")
@@ -340,7 +342,6 @@ def clip_inference(
     bar = tqdm.tqdm()
     for item in data:
         with torch.no_grad():
-
             image_features = model_img(item["image_tensor"].to(device))
             image_features /= image_features.norm(dim=-1, keepdim=True)
             image_embs = image_features.cpu().numpy()
