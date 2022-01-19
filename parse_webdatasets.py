@@ -98,6 +98,8 @@ def get_image_dataset():
             text_tokens = torch.tensor(self.tokenizer.encode(caption), dtype=torch.int64)
             text_tokens, mask = preprocess_text_tokens(text_tokens, self.max_token_length, self.prefix_length)
             
+            print(text_tokens.numpy()
+            
             output["text_tokens"] = np.array([text_tokens.numpy(), mask.numpy()])
             output["text"] = caption
 
