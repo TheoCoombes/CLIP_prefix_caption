@@ -98,7 +98,7 @@ def get_image_dataset():
             text_tokens = torch.tensor(self.tokenizer.encode(caption), dtype=torch.int64)
             text_tokens, mask = preprocess_text_tokens(text_tokens, self.max_token_length, self.prefix_length)
             
-            output["text_tokens"] = np.concatenate((text_tokens.numpy(), mask.numpy()))
+            output["text_tokens"] = np.concatenate((text_tokens.detach().numpy(), mask.detach().numpy()))
             output["text"] = caption
 
             return output
@@ -154,7 +154,7 @@ def create_webdataset(
             text_tokens = torch.tensor(tokenizer.encode(caption), dtype=torch.int64)
             text_tokens, mask = preprocess_text_tokens(text_tokens, max_token_length, prefix_length)
             
-            output["text_tokens"] = np.concatenate((text_tokens.numpy(), mask.numpy()))
+            output["text_tokens"] = np.concatenate((text_tokens.detach().numpy(), mask.detach().numpy()))
             output["text"] = caption
         else:
             metadata_file = item["json"]
@@ -164,7 +164,7 @@ def create_webdataset(
             text_tokens = torch.tensor(tokenizer.encode(caption), dtype=torch.int64)
             text_tokens, mask = preprocess_text_tokens(text_tokens, max_token_length, prefix_length)
             
-            output["text_tokens"] = np.concatenate((text_tokens.numpy(), mask.numpy()))
+            output["text_tokens"] = np.concatenate((text_tokens.detach().numpy(), mask.detach().numpy()))
             output["text"] = caption
         
         return output
