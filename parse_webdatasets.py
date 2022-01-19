@@ -164,8 +164,8 @@ def create_webdataset(
             text_tokens = torch.tensor(tokenizer.encode(caption), dtype=torch.int64)
             text_tokens, mask = preprocess_text_tokens(text_tokens, max_token_length, prefix_length)
             
-            print(text_tokens.numpy())
-            print(mask.numpy())
+            print(text_tokens.numpy(), type(text_tokens.numpy()), mask.numpy(), type(mask.numpy()))
+            print()
             
             output["text_tokens"] = np.array([text_tokens.numpy(), mask.numpy()])
             output["text"] = caption
