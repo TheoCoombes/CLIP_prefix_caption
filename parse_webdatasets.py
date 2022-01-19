@@ -52,7 +52,10 @@ def get_image_dataset():
             keys = join(image_files.keys())
 
             self.keys = list(keys)
+            
             self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_model)
+            self.tokenizer.add_special_tokens({'pad_token': self.tokenizer.eos_token})
+            
             self.text_files = {k: v for k, v in text_files.items() if k in keys}
 
             self.image_files = {k: v for k, v in image_files.items() if k in keys}
@@ -77,8 +80,8 @@ def get_image_dataset():
 
             text_file = self.text_files[key]
             caption = text_file.read_text()
-            tokenized_text = self.tokenizer(caption)
-            output["text_tokens"] = tokenized_text
+            text_tokens = self.tokenizer(caption, padding='max_length', max_length=512, truncation=True)
+            output["text_tokens"] = text_tokens
             output["text"] = caption
 
             return output
@@ -93,7 +96,8 @@ def create_webdataset(
     caption_key="txt",
     caption_in_metadata=False,
     cache_path=None,
-    tokenizer_model="gpt2"
+    tokenizer_model="gpt2",
+    caption_size=77
 ):
     """Create a WebDataset reader, it can read a webdataset of image, text and json"""
     import clip  # pylint: disable=import-outside-toplevel
@@ -101,7 +105,9 @@ def create_webdataset(
     from transformers import AutoTokenizer  # pylint: disable=import-outside-toplevel
 
     dataset = wds.WebDataset(urls, cache_dir=cache_path, cache_size=10 ** 10, handler=wds.handlers.warn_and_continue)
+    
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_model)
+    tokenizer.add_special_tokens({'pad_token': tokenizer.eos_token})
 
     def filter_dataset(item):
         if caption_key not in item and not caption_in_metadata:
@@ -134,8 +140,8 @@ def create_webdataset(
             metadata = metadata_file.decode("utf-8")
 
             caption = json.loads(metadata)[caption_key]
-            tokenized_text = tokenizer(caption)
-            output["text_tokens"] = tokenized_text
+            text_tokens = tokenizer(caption, padding='max_length', max_length=512, truncation=True)
+            output["text_tokens"] = text_tokens
             output["text"] = caption
         
         return output
