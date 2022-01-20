@@ -36,9 +36,9 @@ class WebDatasetData(Dataset):
         token_files = [file for file in self.tokens_path.glob("*.npy") if "_" not in file.name]
         mask_files = [file for file in self.masks_path.glob("*.npy") if "_" not in file.name]
         
-        self.embedding_file_data = [np.memmap(file, mode='r') for file in embedding_files]
-        self.token_file_data = [np.memmap(file, mode='r') for file in token_files]
-        self.mask_file_data = [np.memmap(file, mode='r') for file in mask_files]
+        self.embedding_file_data = [np.memmap(file, dtype=np.float16, mode='r') for file in embedding_files]
+        self.token_file_data = [np.memmap(file, dtype=np.int64, mode='r') for file in token_files]
+        self.mask_file_data = [np.memmap(file, dtype=np.float32, mode='r') for file in mask_files]
         
         self.start_indices = [0] * len(self.embedding_file_data)
         self.sample_count = 0
