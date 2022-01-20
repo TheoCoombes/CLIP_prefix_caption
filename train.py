@@ -1,8 +1,9 @@
 import torch
 import torch.nn as nn
 from torch.nn import functional as nnf
-from torch.utils.data import IterableDataset, DataLoader
+from torch.utils.data import Dataset, DataLoader
 from enum import Enum
+from bisect import bisect
 from transformers import GPT2Tokenizer, GPT2LMHeadModel, AdamW, get_linear_schedule_with_warmup
 from pathlib import Path
 from tqdm import tqdm
@@ -20,7 +21,7 @@ class MappingType(Enum):
     Transformer = 'transformer'
 
 
-class WebDatasetData(IterableDataset):
+class WebDatasetData(Dataset):
     def __init__(self, data_path: str, normalize_prefix: bool = False):
         super(WebDatasetData).__init__()
         
@@ -31,53 +32,39 @@ class WebDatasetData(IterableDataset):
         self.images_path = path / "img_embeddings"
         self.tokens_path = path / "text_tokens"
         self.masks_path = path / "text_masks"
-        self.embedding_files = list(images_path.glob("*.npy"))
-        self.total_batches = len(self.embedding_files)
-        self.epoch = 0
-    
-    
-    def __iter__(self):
-        worker_info = torch.utils.data.get_worker_info()
         
-        if worker_info is None:
-            worker_id = 0
-            num_workers = 1
-        else:
-            worker_id = worker_info.id
-            num_workers = worker_info.num_workers
+        self.embedding_file_data = [np.memmap(file, dtype=np.float16, mode='r') for file in self.images_path.glob("*.npy")]
+        self.token_file_data = [np.memmap(file, dtype=np.float16, mode='r') for file in self.tokens_path.glob("*.npy")]
+        self.mask_file_data = [np.memmap(file, dtype=np.float16, mode='r') for file in self.masks_path.glob("*.npy")]
         
-        batch_index = worker_id
-        while True:
-            while batch_index >= self.total_batches:
-                batch_index -= self.total_batches
+        self.start_indices = [0] * len(self.embedding_file_data)
+        self.sample_count = 0
+        
+        for i, memmap in enumerate(self.embedding_file_data):
+            self.start_indices[i] = self.data_count
+            self.sample_count += memmap.shape[0]
+    
+    def __len__(self):
+        return self.sample_count
+    
+    def __getitem__(self, sample_index: int):
+        batch_index = bisect(self.start_indices, sample_index) - 1
+        memmap_index = sample_index - self.start_indices[batch_index]
+        
+        tokens = self.token_file_data[batch_index][memmap_index]
+        mask = self.mask_file_data[batch_index][memmap_index]
+        prefix = self.embedding_file_data[batch_index][memmap_index]
+        
+        tokens = torch.from_numpy(tokens)
+        mask = torch.from_numpy(mask)
+        prefix = torch.from_numpy(prefix)
+    
+        if self.normalize_prefix:
+            prefix = prefix.float()
+            prefix = prefix / prefix.norm(2, -1)
 
-            batch = self._load_batch(self.embedding_files[batch_index])
+        return tokens, mask, prefix
 
-            for tokens, mask, prefix in batch:      
-                if self.normalize_prefix:
-                    prefix = prefix.float()
-                    prefix = prefix / prefix.norm(2, -1)
-
-                yield tokens, mask, prefix
-            
-            batch_index += worker_id
-    
-    
-    def _load_batch(self, image_file: Path) -> List[Tuple[torch.Tensor, ...]]:
-        file_id = image_file.name.split("_")[-1].split(".")[0]
-        
-        token_file = self.tokens_path / f"text_tokens_{file_id}.npy"
-        masks_file = self.tokens_path / f"text_tokens_{file_id}.npy"
-        
-        image_embeddings = [embedding for embedding in torch.from_numpy(np.load(image_file))]
-        caption_tokens = [tokens for tokens in torch.from_numpy(np.load(token_file))]
-        caption_masks = [mask for mask in torch.from_numpy(np.load(masks_file))]
-        
-        batch = list(zip(caption_tokens, caption_masks, image_embeddings))
-        
-        return batch
-    
-    
 
 class MLP(nn.Module):
 
