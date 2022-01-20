@@ -32,9 +32,13 @@ class WebDatasetData(Dataset):
         self.tokens_path = path / "text_tokens"
         self.masks_path = path / "text_masks"
         
-        self.embedding_file_data = [np.memmap(file, mode='r') for file in self.images_path.glob("*.npy")]
-        self.token_file_data = [np.memmap(file, mode='r') for file in self.tokens_path.glob("*.npy")]
-        self.mask_file_data = [np.memmap(file, mode='r') for file in self.masks_path.glob("*.npy")]
+        embedding_files = [file for file in self.images_path.glob("*.npy") if "_" not in file.name]
+        token_files = [file for file in self.tokens_path.glob("*.npy") if "_" not in file.name]
+        mask_files = [file for file in self.masks_path.glob("*.npy") if "_" not in file.name]
+        
+        self.embedding_file_data = [np.memmap(file, mode='r') for file in embedding_files]
+        self.token_file_data = [np.memmap(file, mode='r') for file in token_files]
+        self.mask_file_data = [np.memmap(file, mode='r') for file in mask_files]
         
         self.start_indices = [0] * len(self.embedding_file_data)
         self.sample_count = 0
