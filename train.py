@@ -32,9 +32,9 @@ class WebDatasetData(Dataset):
         self.tokens_path = path / "text_tokens"
         self.masks_path = path / "text_masks"
         
-        self.embedding_file_data = [np.memmap(file, dtype=np.float16, mode='r') for file in self.images_path.glob("*.npy")]
-        self.token_file_data = [np.memmap(file, dtype=np.int64, mode='r') for file in self.tokens_path.glob("*.npy")]
-        self.mask_file_data = [np.memmap(file, dtype=np.float32, mode='r') for file in self.masks_path.glob("*.npy")]
+        self.embedding_file_data = [np.memmap(file, mode='r') for file in self.images_path.glob("*.npy")]
+        self.token_file_data = [np.memmap(file, mode='r') for file in self.tokens_path.glob("*.npy")]
+        self.mask_file_data = [np.memmap(file, mode='r') for file in self.masks_path.glob("*.npy")]
         
         self.start_indices = [0] * len(self.embedding_file_data)
         self.sample_count = 0
@@ -53,8 +53,6 @@ class WebDatasetData(Dataset):
         tokens = self.token_file_data[batch_index][memmap_index]
         mask = self.mask_file_data[batch_index][memmap_index]
         prefix = self.embedding_file_data[batch_index][memmap_index]
-        
-        print(tokens)
         
         tokens = torch.from_numpy(tokens)
         mask = torch.from_numpy(mask)
