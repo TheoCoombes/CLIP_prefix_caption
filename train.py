@@ -26,6 +26,7 @@ class WebDatasetData(Dataset):
         super(WebDatasetData).__init__()
         
         self.normalize_prefix = normalize_prefix
+        self.prefix_length = 10
         
         path = Path(data_path)
         self.images_path = path / "img_embeddings"
