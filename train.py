@@ -25,7 +25,6 @@ class WebDatasetData(Dataset):
     def __init__(self, data_path: str, normalize_prefix: bool = False):
         super(WebDatasetData).__init__()
         
-        self.prefix_length = prefix_length
         self.normalize_prefix = normalize_prefix
         
         path = Path(data_path)
