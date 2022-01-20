@@ -1,18 +1,17 @@
 """ A modified version of clip_inference.py from rom1504/clip-retrieval """
 
-#!pip install clip-anytorch fire
-import fire
 from PIL import Image, UnidentifiedImageError
-import json
-import fsspec
-from io import BytesIO
 from pathlib import Path
+from io import BytesIO
 import numpy as np
+import fsspec
 import torch
+import json
 import tqdm
+import fire
 import io
 
-def preprocess_text_tokens(tokens: torch.Tensor, max_sequence_length: int, prefix_length: int):
+def preprocess_text_tokens(tokens: torch.Tensor, max_sequence_length: int, prefix_length: int) -> Tuple[torch.Tensor, torch.Tensor]:
     padding = max_sequence_length - tokens.shape[0]
     if padding > 0:
         tokens = torch.cat((tokens, torch.zeros(padding, dtype=torch.int64) - 1))
@@ -310,7 +309,7 @@ def clip_inference(
     prefix_length=10,
     device="cuda:0"
 ):
-    """clip inference goes from a image text dataset to clip embeddings"""
+    """preprocesses the input dataset and stores the output"""
 
     import clip  # pylint: disable=import-outside-toplevel
     from torch.utils.data import DataLoader  # pylint: disable=import-outside-toplevel
