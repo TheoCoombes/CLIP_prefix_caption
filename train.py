@@ -277,7 +277,7 @@ def load_model(config_path: str, epoch_or_latest: Union[str, int] = '_latest'):
     return model, parser
 
 
-def train(dataset: WebDatasetDatax, model: ClipCaptionModel, args,
+def train(dataset: WebDatasetData, model: ClipCaptionModel, args,
           lr: float = 2e-5, warmup_steps: int = 5000, output_dir: str = ".", output_prefix: str = "", device: str = "cuda:0"):
 
     device = torch.device(device)
