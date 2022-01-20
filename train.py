@@ -54,6 +54,8 @@ class WebDatasetData(Dataset):
         mask = self.mask_file_data[batch_index][memmap_index]
         prefix = self.embedding_file_data[batch_index][memmap_index]
         
+        print(tokens)
+        
         tokens = torch.from_numpy(tokens)
         mask = torch.from_numpy(mask)
         prefix = torch.from_numpy(prefix)
