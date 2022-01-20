@@ -40,7 +40,7 @@ class WebDatasetData(Dataset):
         self.sample_count = 0
         
         for i, memmap in enumerate(self.embedding_file_data):
-            self.start_indices[i] = self.data_count
+            self.start_indices[i] = self.sample_count
             self.sample_count += memmap.shape[0]
     
     def __len__(self):
