@@ -288,7 +288,7 @@ def train(dataset: WebDatasetData, model: ClipCaptionModel, args,
     model = model.to(device)
     model.train()
     optimizer = AdamW(model.parameters(), lr=lr)
-    train_dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
+    train_dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, drop_last=True)
     scheduler = get_linear_schedule_with_warmup(
         optimizer, num_warmup_steps=warmup_steps, num_training_steps=epochs * len(train_dataloader)
     )
