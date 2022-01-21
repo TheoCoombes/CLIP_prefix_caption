@@ -4,6 +4,7 @@ from torch.nn import functional as nnf
 from torch.utils.data import Dataset, DataLoader
 from enum import Enum
 from bisect import bisect
+import bitsandbytes as bnb
 from transformers import GPT2Tokenizer, GPT2LMHeadModel, AdamW, get_linear_schedule_with_warmup
 from pathlib import Path
 from tqdm import tqdm
@@ -291,7 +292,7 @@ def train(dataset: WebDatasetData, model: ClipCaptionModel, args,
         os.makedirs(output_dir)
     model = model.to(device)
     model.train()
-    optimizer = AdamW(model.parameters(), lr=lr)
+    optimizer = bnb.optim.AdamW8bit(model.parameters(), lr=lr)
     train_dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, drop_last=True)
     scheduler = get_linear_schedule_with_warmup(
         optimizer, num_warmup_steps=warmup_steps, num_training_steps=epochs * len(train_dataloader)
