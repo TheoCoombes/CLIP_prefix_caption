@@ -46,13 +46,13 @@ CPU = torch.device("cpu")
 
 
 class Predictor(cog.Predictor):
-    def setup(self):
+    def setup(self, device: str = "cuda:0"):
         """Load the model into memory to make running multiple predictions efficient"""
-        self.device = torch.device("cuda")
+        self.device = torch.device(device)
         self.clip_model, self.preprocess = clip.load(
             "ViT-B/32", device=self.device, jit=False
         )
-        self.tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+        self.tokenizer = GPT2Tokenizer.from_pretrained("gpt2-xl")
 
         self.models = {}
         self.prefix_length = 10
@@ -135,7 +135,7 @@ class ClipCaptionModel(nn.Module):
     def __init__(self, prefix_length: int, prefix_size: int = 512):
         super(ClipCaptionModel, self).__init__()
         self.prefix_length = prefix_length
-        self.gpt = GPT2LMHeadModel.from_pretrained("gpt2")
+        self.gpt = GPT2LMHeadModel.from_pretrained("gpt2-xl")
         self.gpt_embedding_size = self.gpt.transformer.wte.weight.shape[1]
         if prefix_length > 10:  # not enough memory
             self.clip_project = nn.Linear(
