@@ -378,7 +378,7 @@ while True:
 
         with torch.no_grad():
             prefix = clip_model.encode_image(image).to(device, dtype=torch.float32)
-            prefix = prefix / prefix.norm(2, -1).item()
+            #prefix = prefix / prefix.norm(2, -1).item()
             prefix_embed = model.clip_project(prefix).reshape(1, prefix_length, -1)
 
         if use_beam_search:
