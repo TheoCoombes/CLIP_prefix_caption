@@ -354,7 +354,7 @@ tokenizer = GPT2Tokenizer.from_pretrained("gpt2-xl", cache_dir='/mnt/theocoombes
 
 
 prefix_length = 10
-use_beam_search = False
+use_beam_search = True
 
 model = ClipCaptionPrefix(prefix_length, clip_length=10, prefix_size=512,
                                   num_layers=8, mapping_type='transformer')
