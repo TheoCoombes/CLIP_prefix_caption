@@ -31,7 +31,7 @@ TA = Union[T, ARRAY]
 current_directory = os.getcwd()
 save_path = os.path.join(current_directory, "model")
 os.makedirs(save_path, exist_ok=True)
-model_path = os.path.join(save_path, 'alamy__latest.pt')
+model_path = os.path.join(save_path, 'alamy_transformer_latest.pt')
 
 D = torch.device
 CPU = torch.device("cpu")
