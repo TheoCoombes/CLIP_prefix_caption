@@ -10,6 +10,7 @@ from transformers import GPT2Tokenizer, GPT2LMHeadModel, AdamW, get_linear_sched
 from tqdm import tqdm, trange
 import skimage.io as io
 from PIL import Image
+from enum import Enum
 
 # import torch
 
