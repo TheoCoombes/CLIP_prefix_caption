@@ -22,11 +22,11 @@ class MappingType(Enum):
 
 
 class WebDatasetData(Dataset):
-    def __init__(self, data_path: str, normalize_prefix: bool = False):
+    def __init__(self, data_path: str, normalize_prefix: bool = False, prefix_length: int = 10):
         super(WebDatasetData).__init__()
         
         self.normalize_prefix = normalize_prefix
-        self.prefix_length = 10
+        self.prefix_length = prefix_length
         
         path = Path(data_path)
         self.images_path = path / "img_embeddings"
@@ -344,7 +344,7 @@ def main():
     parser.add_argument('--device', default='cuda:0')
     args = parser.parse_args()
     prefix_length = args.prefix_length
-    dataset = WebDatasetData(args.data_dir, normalize_prefix=args.normalize_prefix)
+    dataset = WebDatasetData(args.data_dir, normalize_prefix=args.normalize_prefix, prefix_length=prefix_length)
     prefix_dim = 640 if args.is_rn else 512
     args.mapping_type = {'mlp': MappingType.MLP, 'transformer': MappingType.Transformer}[args.mapping_type]
     if args.only_prefix:
