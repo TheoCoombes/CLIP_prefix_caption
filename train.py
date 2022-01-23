@@ -33,9 +33,9 @@ class WebDatasetData(Dataset):
         self.tokens_path = path / "text_tokens"
         self.masks_path = path / "text_masks"
         
-        embedding_files = [file for file in self.images_path.glob("*.npy") if "_" not in file.name]
-        token_files = [file for file in self.tokens_path.glob("*.npy") if "_" not in file.name]
-        mask_files = [file for file in self.masks_path.glob("*.npy") if "_" not in file.name]
+        embedding_files = [*self.images_path.glob("*.npy")]
+        token_files = [*self.tokens_path.glob("*.npy")]
+        mask_files = [*self.masks_path.glob("*.npy")]
         
         self.embedding_file_data = [np.load(file, mmap_mode='r') for file in embedding_files]
         self.token_file_data = [np.load(file, mmap_mode='r') for file in token_files]
@@ -51,7 +51,7 @@ class WebDatasetData(Dataset):
     def __len__(self):
         return self.sample_count
     
-    def __getitem__(self, sample_index: int):
+    def __getitem__(self, sample_index: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         batch_index = bisect(self.start_indices, sample_index) - 1
         memmap_index = sample_index - self.start_indices[batch_index]
         
@@ -60,11 +60,10 @@ class WebDatasetData(Dataset):
         prefix = self.embedding_file_data[batch_index][memmap_index]
         
         tokens = torch.from_numpy(tokens, dtype=torch.int64)
-        mask = torch.from_numpy(mask)
+        mask = torch.from_numpy(mask, dtype=torch.float32)
         prefix = torch.from_numpy(prefix, dtype=torch.float32)
     
         if self.normalize_prefix:
-            prefix = prefix.float()
             prefix = prefix / prefix.norm(2, -1)
 
         return tokens, mask, prefix
