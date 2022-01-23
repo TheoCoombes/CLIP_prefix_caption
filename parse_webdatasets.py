@@ -97,6 +97,8 @@ def get_image_dataset():
             text_tokens = torch.tensor(self.tokenizer.encode(caption), dtype=torch.int64)
             text_tokens, mask = preprocess_text_tokens(text_tokens, self.max_token_length, self.prefix_length)
             
+            text_tokens, mask = text_tokens.numpy(), mask.numpy()
+            
             output["text_tokens"] = text_tokens
             output["text_mask"] = mask
             output["text"] = caption
@@ -154,6 +156,8 @@ def create_webdataset(
             text_tokens = torch.tensor(tokenizer.encode(caption), dtype=torch.int64)
             text_tokens, mask = preprocess_text_tokens(text_tokens, max_token_length, prefix_length)
             
+            text_tokens, mask = text_tokens.numpy(), mask.numpy()
+            
             output["text_tokens"] = text_tokens
             output["text_mask"] = mask
             output["text"] = caption
@@ -164,6 +168,8 @@ def create_webdataset(
             
             text_tokens = torch.tensor(tokenizer.encode(caption), dtype=torch.int64)
             text_tokens, mask = preprocess_text_tokens(text_tokens, max_token_length, prefix_length)
+            
+            text_tokens, mask = text_tokens.numpy(), mask.numpy()
             
             output["text_tokens"] = text_tokens
             output["text_mask"] = mask
@@ -232,8 +238,8 @@ class OutputSink:
         self.image_embeddings.append(image_embs)
         self.image_names.extend(image_filenames)
         self.captions.extend(captions)
-        self.text_tokens.extend(text_tokens)
-        self.text_masks.extend(text_masks)
+        self.text_tokens.append(text_tokens)
+        self.text_masks.append(text_masks)
 
         if self.batch_count > self.write_batch_size:
             self.flush()
@@ -259,7 +265,7 @@ class OutputSink:
         data_lists.append(self.image_names)
         data_columns.append("image_path")
 
-        text_token_mat = torch.stack(self.text_tokens, dim=0).numpy()
+        text_token_mat = np.concatenate(self.text_tokens)
         output_path_text = self.text_token_folder + "/text_tokens_" + str(self.batch_num)
 
         with self.fs.open(output_path_text + ".npy", "wb") as f:
@@ -267,7 +273,7 @@ class OutputSink:
             np.save(npb, text_token_mat)
             f.write(npb.getbuffer())
         
-        text_mask_mat = torch.stack(self.text_masks, dim=0).numpy()
+        text_mask_mat = np.concatenate(self.text_masks)
         output_path_text = self.text_mask_folder + "/text_masks_" + str(self.batch_num)
 
         with self.fs.open(output_path_text + ".npy", "wb") as f:
@@ -317,7 +323,6 @@ def clip_inference(
     import torch  # pylint: disable=import-outside-toplevel
 
     model, preprocess = clip.load(clip_model, device=device, jit=False)
-    model_img = model.encode_image
 
     if input_format == "files":
         dataset = get_image_dataset()(preprocess, input_dataset, tokenizer_model=text_tokenizer_model, max_token_length=max_token_length, prefix_length=prefix_length)
@@ -355,9 +360,10 @@ def clip_inference(
     bar = tqdm.tqdm()
     for item in data:
         with torch.no_grad():
-            image_features = model_img(item["image_tensor"].to(device))
-            image_features /= image_features.norm(dim=-1, keepdim=True)
-            image_embs = image_features.cpu().numpy()
+            image_embs = model.encode_image(
+                item["image_tensor"].to(device)
+            ).cpu().numpy()
+            
             image_filename = item["image_filename"]
 
             text_tokens = item["text_tokens"]
