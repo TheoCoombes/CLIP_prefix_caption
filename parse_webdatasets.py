@@ -1,6 +1,7 @@
 """ A modified version of clip_inference.py from rom1504/clip-retrieval """
 
 from PIL import Image, UnidentifiedImageError
+from typing import Tuple
 from pathlib import Path
 from io import BytesIO
 import numpy as np
