@@ -33,9 +33,9 @@ class WebDatasetData(Dataset):
         self.tokens_path = path / "text_tokens"
         self.masks_path = path / "text_masks"
         
-        embedding_files = [*self.images_path.glob("*.npy")]
-        token_files = [*self.tokens_path.glob("*.npy")]
-        mask_files = [*self.masks_path.glob("*.npy")]
+        embedding_files = sorted([*self.images_path.glob("*.npy")], key=lambda x: x.name)
+        token_files = sorted([*self.tokens_path.glob("*.npy")], key=lambda x: x.name)
+        mask_files = sorted([*self.masks_path.glob("*.npy")], key=lambda x: x.name)
         
         self.embedding_file_data = [np.load(file, mmap_mode='r') for file in embedding_files]
         self.token_file_data = [np.load(file, mmap_mode='r') for file in token_files]
